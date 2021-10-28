@@ -56,7 +56,7 @@ class ResidualAdapter(nn.Module):
         self.ra_init_cell_state = nn.Parameter(torch.zeros(args.style_layer_num, args.style_num, args.latent_dim))
         self.ra_branch = nn.ModuleList(ra_style)
     
-    def forward(self, latent_code, transferred_style, content):
+    def forward(self, latent_code, transferred_style, content, test_time=False):
         batch_size, T, _ = latent_code.shape
         content_index = torch.argmax(content.reshape(batch_size, T, -1).mean(dim=1), dim=-1)
 
@@ -64,14 +64,28 @@ class ResidualAdapter(nn.Module):
         c0_neutral = self.neutral_init_cell_state[:, content_index, :]
         neutral_output, (hn, cn) = self.neutral_branch(latent_code, (h0_neutral, c0_neutral))
 
-        ra_result = []
-        for i, branch in enumerate(self.ra_branch):
-            h0_ra = self.ra_init_hidden_state[:, i, :].unsqueeze(1).repeat(1, batch_size, 1)
-            c0_ra = self.ra_init_cell_state[:, i, :].unsqueeze(1).repeat(1, batch_size, 1)
-            ra_result.append(branch(latent_code, (h0_ra, c0_ra))[0])
-        ra_value = torch.stack(ra_result) * transferred_style.permute(2, 0, 1).unsqueeze(-1)
 
-        return neutral_output + ra_value.sum(dim=0)
+        ra_result = []
+        if test_time:
+            transferred_style = transferred_style[:, 0, :]
+            if transferred_style.flatten().sum() > 0:
+                i = torch.argmax(transferred_style.flatten())
+                branch = self.ra_branch[i]
+                h0_ra = self.ra_init_hidden_state[:, i, :].unsqueeze(1).repeat(1, batch_size, 1)
+                c0_ra = self.ra_init_cell_state[:, i, :].unsqueeze(1).repeat(1, batch_size, 1)
+                ra_result = branch(latent_code, (h0_ra, c0_ra))[0]
+                return neutral_output + ra_result
+            else:
+                return neutral_output
+        else:
+            for i, branch in enumerate(self.ra_branch):
+                h0_ra = self.ra_init_hidden_state[:, i, :].unsqueeze(1).repeat(1, batch_size, 1)
+                c0_ra = self.ra_init_cell_state[:, i, :].unsqueeze(1).repeat(1, batch_size, 1)
+                ra_result.append(branch(latent_code, (h0_ra, c0_ra))[0])
+            # transferred_style[:,:,2] = 1.0
+            ra_value = torch.stack(ra_result) * transferred_style.permute(2, 0, 1).unsqueeze(-1)
+
+            return neutral_output + ra_value.sum(dim=0)
 
 
 class Decoder(nn.Module):
@@ -130,7 +144,7 @@ class Generator(nn.Module):
         self.ra = ResidualAdapter(args, dim_dict)
         self.decoder = Decoder(args, dim_dict)
 
-    def forward(self, rotation, position, velocity, content, contact, input_style, transferred_style):
+    def forward(self, rotation, position, velocity, content, contact, input_style, transferred_style, test_time=False):
         batch_size, length, _ = rotation.shape
         
         rotation = rotation.reshape(-1, rotation.shape[-1])
@@ -142,7 +156,7 @@ class Generator(nn.Module):
         input_style = input_style.reshape(-1, input_style.shape[-1])
         encoded_data = self.encoder(rotation, position, velocity, content, contact, input_style)
         # print("encoded_data\n", encoded_data)
-        latent_code = self.ra(encoded_data.view(batch_size, length, -1), transferred_style, content)
+        latent_code = self.ra(encoded_data.view(batch_size, length, -1), transferred_style, content, test_time=test_time)
         # print("latent_code\n", latent_code)
         output = self.decoder(latent_code, transferred_style)
         # print("output_rotation\n", output["rotation"])
@@ -220,8 +234,8 @@ class RecurrentStylization(nn.Module):
         self.generator= Generator(args, dim_dict)
         self.discriminator = Discriminator(args, dim_dict)
     
-    def forward_gen(self, rotation, position, velocity, content, contact, input_style, transferred_style):
-        return self.generator(rotation, position, velocity, content, contact, input_style, transferred_style)
+    def forward_gen(self, rotation, position, velocity, content, contact, input_style, transferred_style, test_time=False):
+        return self.generator(rotation, position, velocity, content, contact, input_style, transferred_style, test_time=test_time)
 
     def forward_dis(self, rotation, position, velocity, style_label, content_label, compute_grad=False):
         return self.discriminator(rotation, position, velocity, style_label, content_label, compute_grad=compute_grad)

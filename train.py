@@ -339,14 +339,15 @@ class Trainer():
     
     def test(self):
 
-        self.model.load_state_dict(torch.load(os.path.join(self.args.load_dir, 'model/model_1200.pt')))
+        self.model.load_state_dict(torch.load(os.path.join(self.args.load_dir, 'model/model_2000.pt')))
         self.model.eval()
         # for test_data in self.test_dataset:
         # for selected_index in [1002,1003,1004,1005,1006,1007,1008,1080]:
-        for selected_index in [3]:
+        for selected_index in [21]:
             test_data = self.test_dataset[selected_index]
             for (key,val) in test_data.items():
-                test_data[key] = val.unsqueeze(0)
+                if key != "content_index":
+                    test_data[key] = val.unsqueeze(0)
             
 
             content = content_labels[(test_data["content"][0, 0, :]==1).nonzero(as_tuple=True)[0]]
@@ -355,16 +356,19 @@ class Trainer():
                 input_style = "neutral"
             else:
                 input_style = style_labels[(input_style==1).nonzero(as_tuple=True)[0]]
-            for ind in range(1):
+            for ind in range(7):
                 output_style_index = ind
                 output_style = style_labels[output_style_index]
                 test_data["transferred_style"] = torch.zeros_like(test_data["transferred_style"])
-                # test_data["transferred_style"][..., output_style_index] = 1
-                test_data["transferred_style"] = test_data["input_style"]
+                test_data["transferred_style"][..., output_style_index] = 1
+                # test_data["transferred_style"] = test_data["input_style"]
 
+
+                start_time = time.time()
                 transferred_motion = self.model.forward_gen(test_data["rotation"], test_data["position"], test_data["velocity"],
-                                        test_data["content"], test_data["contact"],
-                                        test_data["input_style"], test_data["transferred_style"])
+                                    test_data["content"], test_data["contact"],
+                                    test_data["input_style"], test_data["transferred_style"], test_time=True)
+                end_time = time.time()
                 
                 transferred_motion = transferred_motion["rotation"].squeeze(0)
                 root_info = test_data["root"].squeeze(0).transpose(0, 1)
@@ -374,17 +378,17 @@ class Trainer():
             #         transferred_motion, 
             #         os.path.join(self.args.load_dir, "test/{}_to_{}_{}_{}.bvh".format(input_style, output_style, content, selected_index))
             # ) 
-                # remove_fs(
-                #     transferred_motion,
-                #     foot_contact,
-                #     output_path=os.path.join(self.args.load_dir, "test/{}_to_{}_{}_{}.bvh".format(input_style, output_style, content, selected_index))
-                # )
+                remove_fs(
+                    transferred_motion,
+                    foot_contact,
+                    output_path=os.path.join(self.args.load_dir, "Interpolation/{}_to_{}_{}_{}.bvh".format(input_style, output_style, content, selected_index))
+                )
 
-                original_motion = torch.cat((test_data["rotation"][0], root_info), dim=-1).transpose(0, 1).detach().cpu()
-                save_bvh_from_network_output(
-                    original_motion, 
-                    os.path.join(self.args.load_dir, "test/{}_to_{}_{}_{}.bvh".format(input_style, "original", content, selected_index))
-                ) 
+                # original_motion = torch.cat((test_data["rotation"][0], root_info), dim=-1).transpose(0, 1).detach().cpu()
+                # save_bvh_from_network_output(
+                #     original_motion, 
+                #     os.path.join(self.args.load_dir, "submission/{}_to_{}_{}_{}.bvh".format(input_style, "original", content, selected_index))
+                # ) 
 
 
 if __name__ == "__main__":
