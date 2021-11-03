@@ -5,3 +5,5 @@ utils/__pycache__/*
 .vscode/*
 data/*
 __pycache__/*
+.idea/*
+python_env/*

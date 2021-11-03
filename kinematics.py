@@ -4,8 +4,10 @@ import math
 import copy
 import os
 import sys
+
 BASEPATH = os.path.dirname(__file__)
 from os.path import join as pjoin
+
 sys.path.insert(0, BASEPATH)
 sys.path.insert(0, pjoin(BASEPATH, '..'))
 
@@ -18,9 +20,12 @@ class ForwardKinematics:
             skel = Skel()
         offset = skel.offset
         topology = skel.topology
-        if isinstance(offset, np.ndarray): self.offset = torch.tensor(offset, dtype=torch.float)
-        elif isinstance(offset, torch.Tensor): self.offset = offset
-        else: raise Exception('Unknown type for offset')
+        if isinstance(offset, np.ndarray):
+            self.offset = torch.tensor(offset, dtype=torch.float)
+        elif isinstance(offset, torch.Tensor):
+            self.offset = offset
+        else:
+            raise Exception('Unknown type for offset')
         self.topology = copy.copy(topology)
         self.chosen_joints = skel.chosen_joints
 
@@ -47,7 +52,8 @@ class ForwardKinematics:
             rotation = rotation / norm
         else:
             rotation = rotation.reshape(rotation.shape[0], -1, 3, rotation.shape[-1])
-        position = torch.zeros(rotation.shape[:1] + (3, ) + rotation.shape[-1:], device=rotation.device) # should be [B, 3, T]
+        position = torch.zeros(rotation.shape[:1] + (3,) + rotation.shape[-1:],
+                               device=rotation.device)  # should be [B, 3, T]
         return self.forward(rotation, position, world=world, quater=quater)
 
     '''
@@ -55,12 +61,13 @@ class ForwardKinematics:
     position should have shape batch_size * 3 * Time
     output have shape batch_size * Time * Joint_num
     '''
+
     def forward(self, rotation: torch.Tensor, position: torch.Tensor, order='xyz', quater=True, world=True):
         if not quater and rotation.shape[-2] != 3: raise Exception('Unexpected shape of rotation')
         if quater and rotation.shape[-2] != 4: raise Exception('Unexpected shape of rotation')
         rotation = rotation.permute(0, 3, 1, 2)
         position = position.permute(0, 2, 1)
-        result = torch.empty(rotation.shape[:-1] + (3, ), device=position.device)
+        result = torch.empty(rotation.shape[:-1] + (3,), device=position.device)
 
         if quater:
             transform = self.transform_from_quaternion(rotation)
@@ -141,15 +148,16 @@ class ForwardKinematics:
         m[..., 2, 2] = 1.0 - (xx + yy)
 
         return m
+
     """
     [B, T, J, 3] global positions => [B, J * 3, T], relative pos + glb root
     """
+
     def global2local(self, x):
         pos = x[:, :, self.chosen_joints]
-        rpos = pos[:, :, 0:1] * 1.0 # [B, T, 1, 3]
-        pos -= rpos # minus root, relative positions
+        rpos = pos[:, :, 0:1] * 1.0  # [B, T, 1, 3]
+        pos -= rpos  # minus root, relative positions
         ret = torch.cat((pos[:, :, 1:], rpos), dim=-2)
-        ret = ret.reshape(ret.shape[:2] + (-1, )) # [B, T, -1]
-        ret = ret.permute(0, 2, 1) # [B, J * 3, T]
+        ret = ret.reshape(ret.shape[:2] + (-1,))  # [B, T, -1]
+        ret = ret.permute(0, 2, 1)  # [B, J * 3, T]
         return ret
-
