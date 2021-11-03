@@ -5,7 +5,6 @@ This repository contains code for the paper ***Online Motion Style Transfer***.
 ---
 ## Usage of the code
 
----
 ### Install the dependencies
 To install the python dependencies, you can create a new virtual environment than install the necessary packages:
 
