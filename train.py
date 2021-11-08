@@ -330,7 +330,7 @@ class Trainer():
             test_data = self.test_dataset[selected_index]
             for (key, val) in test_data.items():
                 if key != "content_index":
-                    test_data[key] = val.unsqueeze(0)
+                    test_data[key] = val[0].unsqueeze(0).unsqueeze(0)
 
             content = content_labels[(test_data["content"][0, 0, :] == 1).nonzero(as_tuple=True)[0]]
             input_style = test_data["input_style"][0, 0, :]
@@ -346,12 +346,14 @@ class Trainer():
                 # test_data["transferred_style"] = test_data["input_style"]
 
                 start_time = time.time()
-                transferred_motion = self.model.forward_gen(test_data["rotation"], test_data["position"],
-                                                            test_data["velocity"],
-                                                            test_data["content"], test_data["contact"],
-                                                            test_data["input_style"], test_data["transferred_style"],
-                                                            test_time=False)
+                for _ in range(100):
+                    transferred_motion = self.model.forward_gen(test_data["rotation"], test_data["position"],
+                                                                test_data["velocity"],
+                                                                test_data["content"], test_data["contact"],
+                                                                test_data["input_style"], test_data["transferred_style"],
+                                                                test_time=True)
                 end_time = time.time()
+                print(end_time-start_time)
 
                 transferred_motion = transferred_motion["rotation"].squeeze(0)
                 root_info = test_data["root"].squeeze(0).transpose(0, 1)

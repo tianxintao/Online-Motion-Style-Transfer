@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import time
 from torch import autograd
 from kinematics import ForwardKinematics
 
@@ -106,7 +107,7 @@ class Decoder(nn.Module):
         if not args.no_pos: self.position_layer = nn.Linear(current_dim, dim_dict["position"])
         if not args.no_vel: self.velocity_layer = nn.Linear(current_dim, dim_dict["velocity"])
 
-    def forward(self, latent_code, style):
+    def forward(self, latent_code, style, test_time=True):
         style = torch.zeros_like(style)
         features = self.features(torch.cat((latent_code, style), dim=-1))
 
@@ -116,6 +117,9 @@ class Decoder(nn.Module):
         rotation_norm = torch.norm(output_dict["rotation"].view(batch_size, length, -1, 4), dim=-1, keepdim=True)
         output_dict["rotation"] = output_dict["rotation"].view(batch_size, length, -1, 4) / rotation_norm
         output_dict["rotation"] = output_dict["rotation"].view(batch_size, length, -1)
+
+        if test_time:
+            return output_dict
 
         if not self.args.no_pos:
             output_dict["position"] = self.position_layer(features)
@@ -142,6 +146,7 @@ class Generator(nn.Module):
     def forward(self, rotation, position, velocity, content, contact, input_style, transferred_style, test_time=False):
         batch_size, length, _ = rotation.shape
 
+        start_time = time.time()
         rotation = rotation.reshape(-1, rotation.shape[-1])
         position = position.reshape(-1, position.shape[-1])
         velocity = velocity.reshape(-1, velocity.shape[-1])
@@ -151,7 +156,7 @@ class Generator(nn.Module):
         encoded_data = self.encoder(rotation, position, velocity, content, contact, input_style)
         latent_code = self.ra(encoded_data.view(batch_size, length, -1), transferred_style, content,
                               test_time=test_time)
-        output = self.decoder(latent_code, transferred_style)
+        output = self.decoder(latent_code, transferred_style, test_time=test_time)
 
         return output
 
