@@ -1,6 +1,6 @@
 # LSTM-style
 
-This repository contains code for the paper ***Online Motion Style Transfer***.
+This repository contains code for the paper ***Online Motion Style Transfer***. <br /> 
 ![image](./online_transfer.png)
 
 ###Abstract:
