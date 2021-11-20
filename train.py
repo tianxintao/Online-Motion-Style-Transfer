@@ -36,7 +36,6 @@ class ArgParserTrain(argparse.ArgumentParser):
         self.add_argument("--load_dir", default=None, type=str)
         self.add_argument("--tag", default='', type=str)
         self.add_argument("--train_classifier", default=False, action='store_true')
-        self.add_argument("--test_mode", default=False, action='store_true')
 
         # training hyperparameters
         self.add_argument("--batch_size", default=16, type=int)
@@ -64,8 +63,6 @@ def main():
     trainer = Trainer(args)
     if args.train_classifier:
         trainer.train_classifier()
-    elif args.test_mode:
-        trainer.test()
     else:
         trainer.train()
 
@@ -319,64 +316,6 @@ class Trainer():
 
             if (epoch + 1) % self.args.save_freq == 0:
                 torch.save(self.model.state_dict(), os.path.join(self.model_dir, "model_{}.pt".format(epoch + 1)))
-
-    def test(self):
-
-        self.model.load_state_dict(torch.load(os.path.join(self.args.load_dir, 'model/model_2000.pt')))
-        self.model.eval()
-        # for test_data in self.test_dataset:
-        # for selected_index in [1002,1003,1004,1005,1006,1007,1008,1080]:
-        for selected_index in [24]:
-            test_data = self.test_dataset[selected_index]
-            for (key, val) in test_data.items():
-                if key != "content_index":
-                    test_data[key] = val[0].unsqueeze(0).unsqueeze(0)
-
-            content = content_labels[(test_data["content"][0, 0, :] == 1).nonzero(as_tuple=True)[0]]
-            input_style = test_data["input_style"][0, 0, :]
-            if input_style.sum() == 0.0:
-                input_style = "neutral"
-            else:
-                input_style = style_labels[(input_style == 1).nonzero(as_tuple=True)[0]]
-            for ind in range(7):
-                output_style_index = ind
-                output_style = style_labels[output_style_index]
-                test_data["transferred_style"] = torch.zeros_like(test_data["transferred_style"])
-                test_data["transferred_style"][..., output_style_index] = 1
-                # test_data["transferred_style"] = test_data["input_style"]
-
-                start_time = time.time()
-                for _ in range(100):
-                    transferred_motion = self.model.forward_gen(test_data["rotation"], test_data["position"],
-                                                                test_data["velocity"],
-                                                                test_data["content"], test_data["contact"],
-                                                                test_data["input_style"], test_data["transferred_style"],
-                                                                test_time=True)
-                end_time = time.time()
-                print(end_time-start_time)
-
-                transferred_motion = transferred_motion["rotation"].squeeze(0)
-                root_info = test_data["root"].squeeze(0).transpose(0, 1)
-                foot_contact = test_data["contact"].cpu().squeeze(0).transpose(0, 1).numpy()
-                transferred_motion = torch.cat((transferred_motion, root_info), dim=-1).transpose(0, 1).detach().cpu()
-                save_bvh_from_network_output(
-                    transferred_motion,
-                    os.path.join(self.args.load_dir,
-                                 "test/{}_to_{}_{}_{}.bvh".format(input_style, output_style, content, selected_index))
-                )
-                remove_fs(
-                    transferred_motion,
-                    foot_contact,
-                    output_path=os.path.join(self.args.load_dir,
-                                             "submission/{}_to_{}_{}_{}.bvh".format(input_style, output_style, content,
-                                                                                    selected_index))
-                )
-
-                # original_motion = torch.cat((test_data["rotation"][0], root_info), dim=-1).transpose(0, 1).detach().cpu()
-                # save_bvh_from_network_output(
-                #     original_motion, 
-                #     os.path.join(self.args.load_dir, "submission/{}_to_{}_{}_{}.bvh".format(input_style, "original", content, selected_index))
-                # ) 
 
 
 if __name__ == "__main__":

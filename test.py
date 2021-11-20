@@ -100,7 +100,7 @@ def main():
     content = args.input_content
     input_style = args.input_style
     output_style = args.target_style
-
+    
     transferred_motion = model.forward_gen(test_data["rotation"], test_data["position"], test_data["velocity"],
                         test_data["content"], test_data["contact"],
                         test_data["input_style"], test_data["transferred_style"], test_time=True)
@@ -109,21 +109,15 @@ def main():
     root_info = test_data["root"].squeeze(0).transpose(0, 1)
     foot_contact = test_data["contact"].cpu().squeeze(0).transpose(0, 1).numpy()
     transferred_motion = torch.cat((transferred_motion,root_info), dim=-1).transpose(0, 1).detach().cpu()
-    #     save_bvh_from_network_output(
-    #         transferred_motion, 
-    #         os.path.join(self.args.load_dir, "test/{}_to_{}_{}_{}.bvh".format(input_style, output_style, content, selected_index))
-    # ) 
+    save_bvh_from_network_output(
+        transferred_motion, 
+        os.path.join(args.load_dir, "mixamo/{}_to_{}_{}_{}.bvh".format(input_style, output_style, content))
+    ) 
     remove_fs(
         transferred_motion,
         foot_contact,
-        output_path=os.path.join(args.load_dir, "submission/{}_to_{}_{}.bvh".format(input_style, output_style, content))
+        output_path=os.path.join(args.load_dir, "mixamo/{}_to_{}_{}.bvh".format(input_style, output_style, content))
     )
-
-        # original_motion = torch.cat((test_data["rotation"][0], root_info), dim=-1).transpose(0, 1).detach().cpu()
-        # save_bvh_from_network_output(
-        #     original_motion, 
-        #     os.path.join(self.args.load_dir, "submission/{}_to_{}_{}_{}.bvh".format(input_style, "original", content, selected_index))
-        # ) 
 
 if __name__ == "__main__":
     main()
