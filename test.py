@@ -20,7 +20,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 content_labels = ["walk", "run", "jump", "punch", "kick"]
 style_labels = ["angry", "childlike", "depressed", "old", "proud", "sexy", "strutting"]
 
-class ArgParserTrain(argparse.ArgumentParser):
+class ArgParserTest(argparse.ArgumentParser):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
@@ -72,19 +72,29 @@ def process_single_bvh(filename, args, downsample=4, skel=None):
             "transferred_style": torch.FloatTensor(np.tile([target_style],(episode_length,1))).to(device),
             "content_index": torch.LongTensor(content_index).to(device)
         }
+    
+    dim_dict = {
+            "rotation": data["rotation"][0].shape[-1],
+            "position": data["position"][0].shape[-1],
+            "velocity": data["velocity"][0].shape[-1],
+            "style": len(style_labels), 
+            "content": len(content_labels),
+            "contact": data["contact"][0].shape[-1],
+            "root": data["root"][0].shape[-1]
+        }
 
-    return data
+    return data, dim_dict
 
 def main():
-    args = ArgParserTrain().parse_args()
+    args = ArgParserTest().parse_args()
+    
+    test_data, dim_dict = process_single_bvh(args.input_motion, args, downsample=2)
 
-    dataset = MotionDataset(args)
-    model = RecurrentStylization(args, dataset.dim_dict).to(device)
+    model = RecurrentStylization(args, dim_dict).to(device)
 
     model.load_state_dict(torch.load(os.path.join(args.load_dir, 'model/model_2000.pt')))
     model.eval()
 
-    test_data = process_single_bvh(args.input_motion, args, downsample=1)
     for (key,val) in test_data.items():
         if key != "content_index":
             test_data[key] = val.unsqueeze(0)
@@ -102,21 +112,12 @@ def main():
     root_info = test_data["root"].squeeze(0).transpose(0, 1)
     foot_contact = test_data["contact"].cpu().squeeze(0).transpose(0, 1).numpy()
     transferred_motion = torch.cat((transferred_motion,root_info), dim=-1).transpose(0, 1).detach().cpu()
-    #     save_bvh_from_network_output(
-    #         transferred_motion, 
-    #         os.path.join(self.args.load_dir, "test/{}_to_{}_{}_{}.bvh".format(input_style, output_style, content, selected_index))
-    # ) 
     remove_fs(
         transferred_motion,
         foot_contact,
-        output_path=os.path.join(args.load_dir, "submission/{}_to_{}_{}.bvh".format(input_style, output_style, content))
+        output_path="output_dir/{}_to_{}_{}.bvh".format(input_style, output_style, content)
     )
 
-        # original_motion = torch.cat((test_data["rotation"][0], root_info), dim=-1).transpose(0, 1).detach().cpu()
-        # save_bvh_from_network_output(
-        #     original_motion, 
-        #     os.path.join(self.args.load_dir, "submission/{}_to_{}_{}_{}.bvh".format(input_style, "original", content, selected_index))
-        # ) 
 
 if __name__ == "__main__":
     main()
