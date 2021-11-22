@@ -24,7 +24,7 @@ class MotionDataset(Dataset):
         super(MotionDataset, self).__init__()
 
         self.args = args
-        self.skel = Skel()  # TD: add config
+        self.skel = Skel()
 
         dataset = np.load(args.data_path, allow_pickle=True)[subset_name].item()
         motions, labels, metas = dataset["motion"], dataset["style"], dataset["meta"]
@@ -46,10 +46,6 @@ class MotionDataset(Dataset):
                 self.len += 1
                 
                 anim = AnimationData(motion, skel=self.skel)
-                # if label not in self.labels:
-                #     self.labels.append(label)
-                #     self.data_dict[label] = []
-                # self.data_dict[label].append(i)
                 self.motion_i.append(anim)
                 self.joint_rotations.append(anim.get_joint_rotation())
                 self.joint_positions.append(anim.get_joint_position())

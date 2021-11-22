@@ -13,6 +13,7 @@ from model import RecurrentStylization, ContentClassification
 from torch.utils.tensorboard import SummaryWriter
 from dataloader import MotionDataset
 from postprocess import save_bvh_from_network_output, remove_fs
+from utils.utils import *
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.set_printoptions(edgeitems=5)
@@ -71,31 +72,6 @@ def main():
     else:
         trainer.train()
 
-def make_dir(dir_path):
-    try:
-        os.mkdir(dir_path)
-    except OSError:
-        pass
-    return dir_path
-
-def create_logger(output_path):
-    logger = logging.getLogger()
-    logger.handlers.clear()
-    logger_name = os.path.join(output_path, 'session.log')
-    file_handler = logging.FileHandler(logger_name)
-    console_handler = logging.StreamHandler()
-    logger.addHandler(file_handler)
-    logger.addHandler(console_handler)
-    logger.setLevel(os.environ.get("LOGLEVEL", "INFO"))
-    return logger
-
-def get_style_name(style_vector):
-    if style_vector.sum() == 0.0:
-        style = "neutral"
-    else:
-        style = style_labels[(style_vector==1).nonzero(as_tuple=True)[0]]
-    return style
-
 class Trainer():
     def __init__(self, args):
         torch.manual_seed(args.seed)
@@ -118,8 +94,6 @@ class Trainer():
         with open(os.path.join(experiment_dir, 'args.json'), 'w') as f:
             json.dump(vars(args), f, sort_keys=True, indent=4)
         
-        self.tb = SummaryWriter(log_dir=os.path.join(experiment_dir, 'tb_logger'))
-
         self.dataset = MotionDataset(args)
         self.test_dataset = MotionDataset(args, subset_name="test")
         self.dataloader = torch.utils.data.DataLoader(dataset=self.dataset, batch_size=args.batch_size, shuffle=True)
@@ -175,7 +149,6 @@ class Trainer():
     def compute_generator_loss(self, reconstruction, fake_motion, ground_truth, fake_score):
 
         rotation_loss = self.quaternion_difference(reconstruction["rotation"], ground_truth["rotation"]) * 0.05
-        # rotation_loss = self.criterion(reconstruction["rotation"], ground_truth["rotation"]) * 64.0
         position_loss = self.criterion(reconstruction["position"], ground_truth["position"])
         velocity_loss = self.criterion(reconstruction["velocity"], ground_truth["velocity"])
         
@@ -205,7 +178,6 @@ class Trainer():
         rot1 = rot1.reshape(batch_size, duration, -1, 4)
         rot2 = rot2.reshape(batch_size, duration, -1, 4)
         angle = torch.acos(torch.clamp(torch.abs((rot1 * rot2).sum(dim=-1)), -1+epsilon, 1-epsilon))
-        # angle = 2 * torch.acos(torch.abs(rot1 * rot2).sum(dim=-1), -1+epsilon, 1-epsilon)
         return (angle**2).sum(dim=-1).sum(dim=-1).mean()
 
     def reset_loss_dict(self):
@@ -336,59 +308,6 @@ class Trainer():
 
             if (epoch+1) % self.args.save_freq == 0:
                 torch.save(self.model.state_dict(), os.path.join(self.model_dir, "model_{}.pt".format(epoch+1)))
-    
-    def test(self):
-
-        self.model.load_state_dict(torch.load(os.path.join(self.args.load_dir, 'model/model_2000.pt')))
-        self.model.eval()
-        # for test_data in self.test_dataset:
-        # for selected_index in [1002,1003,1004,1005,1006,1007,1008,1080]:
-        for selected_index in [21]:
-            test_data = self.test_dataset[selected_index]
-            for (key,val) in test_data.items():
-                if key != "content_index":
-                    test_data[key] = val.unsqueeze(0)
-            
-
-            content = content_labels[(test_data["content"][0, 0, :]==1).nonzero(as_tuple=True)[0]]
-            input_style = test_data["input_style"][0, 0, :]
-            if input_style.sum() == 0.0:
-                input_style = "neutral"
-            else:
-                input_style = style_labels[(input_style==1).nonzero(as_tuple=True)[0]]
-            for ind in range(7):
-                output_style_index = ind
-                output_style = style_labels[output_style_index]
-                test_data["transferred_style"] = torch.zeros_like(test_data["transferred_style"])
-                test_data["transferred_style"][..., output_style_index] = 1
-                # test_data["transferred_style"] = test_data["input_style"]
-
-
-                start_time = time.time()
-                transferred_motion = self.model.forward_gen(test_data["rotation"], test_data["position"], test_data["velocity"],
-                                    test_data["content"], test_data["contact"],
-                                    test_data["input_style"], test_data["transferred_style"], test_time=True)
-                end_time = time.time()
-                
-                transferred_motion = transferred_motion["rotation"].squeeze(0)
-                root_info = test_data["root"].squeeze(0).transpose(0, 1)
-                foot_contact = test_data["contact"].cpu().squeeze(0).transpose(0, 1).numpy()
-                transferred_motion = torch.cat((transferred_motion,root_info), dim=-1).transpose(0, 1).detach().cpu()
-            #     save_bvh_from_network_output(
-            #         transferred_motion, 
-            #         os.path.join(self.args.load_dir, "test/{}_to_{}_{}_{}.bvh".format(input_style, output_style, content, selected_index))
-            # ) 
-                remove_fs(
-                    transferred_motion,
-                    foot_contact,
-                    output_path=os.path.join(self.args.load_dir, "Interpolation/{}_to_{}_{}_{}.bvh".format(input_style, output_style, content, selected_index))
-                )
-
-                # original_motion = torch.cat((test_data["rotation"][0], root_info), dim=-1).transpose(0, 1).detach().cpu()
-                # save_bvh_from_network_output(
-                #     original_motion, 
-                #     os.path.join(self.args.load_dir, "submission/{}_to_{}_{}_{}.bvh".format(input_style, "original", content, selected_index))
-                # ) 
 
 
 if __name__ == "__main__":

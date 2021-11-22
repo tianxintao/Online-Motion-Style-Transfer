@@ -82,7 +82,6 @@ class ResidualAdapter(nn.Module):
                 h0_ra = self.ra_init_hidden_state[:, i, :].unsqueeze(1).repeat(1, batch_size, 1)
                 c0_ra = self.ra_init_cell_state[:, i, :].unsqueeze(1).repeat(1, batch_size, 1)
                 ra_result.append(branch(latent_code, (h0_ra, c0_ra))[0])
-            # transferred_style[:,:,2] = 1.0
             ra_value = torch.stack(ra_result) * transferred_style.permute(2, 0, 1).unsqueeze(-1)
 
             return neutral_output + ra_value.sum(dim=0)
@@ -105,20 +104,18 @@ class Decoder(nn.Module):
         if not args.no_pos: self.position_layer = nn.Linear(current_dim, dim_dict["position"])
         if not args.no_vel: self.velocity_layer = nn.Linear(current_dim, dim_dict["velocity"])
 
-    def forward(self, latent_code, style):
+    def forward(self, latent_code, style, test_time=False):
         features = self.features(torch.cat((latent_code,style), dim=-1))
         output_dict = {}
-        # output_dict["rotation"] = self.rotation_layer(features)
-        # batch_size, length, rotation_dim = output_dict["rotation"].shape
-        # rotation_norm = torch.norm(self.rotation_layer(features).view(batch_size,length,-1,4), dim=-1, keepdim=True)
-        # output_dict["rotation"] = self.rotation_layer(features).view(batch_size,length,-1,4) / rotation_norm
-        # output_dict["rotation"] = output_dict["rotation"].view(batch_size, length, -1)
 
         output_dict["rotation"] = self.rotation_layer(features)
         batch_size, length, rotation_dim = output_dict["rotation"].shape
         rotation_norm = torch.norm(output_dict["rotation"].view(batch_size,length, -1, 4), dim=-1, keepdim=True)
         output_dict["rotation"] = output_dict["rotation"].view(batch_size,length, -1, 4) / rotation_norm
         output_dict["rotation"] = output_dict["rotation"].view(batch_size, length, -1)
+        
+        if test_time:
+            return output_dict
 
         if not self.args.no_pos:
             output_dict["position"] = self.position_layer(features)
@@ -131,8 +128,6 @@ class Decoder(nn.Module):
             velocity_last = (2 * velocity[:, -1 , :] - velocity[:, -2 , :]).unsqueeze(1)
             output_dict["velocity"] = torch.cat((velocity,velocity_last), dim=1)
 
-        # for key in ["rotation", "position", "velocity"]:
-        #     output_dict[key] = output_dict[key].permute(0, 2, 1)
         return output_dict
 
 
@@ -148,18 +143,14 @@ class Generator(nn.Module):
         batch_size, length, _ = rotation.shape
         
         rotation = rotation.reshape(-1, rotation.shape[-1])
-        # print("input_rotation\n", rotation)
         position = position.reshape(-1, position.shape[-1])
         velocity = velocity.reshape(-1, velocity.shape[-1])
         content = content.reshape(-1, content.shape[-1])
         contact = contact.reshape(-1, contact.shape[-1])
         input_style = input_style.reshape(-1, input_style.shape[-1])
         encoded_data = self.encoder(rotation, position, velocity, content, contact, input_style)
-        # print("encoded_data\n", encoded_data)
         latent_code = self.ra(encoded_data.view(batch_size, length, -1), transferred_style, content, test_time=test_time)
-        # print("latent_code\n", latent_code)
-        output = self.decoder(latent_code, transferred_style)
-        # print("output_rotation\n", output["rotation"])
+        output = self.decoder(latent_code, transferred_style, test_time=test_time)
         
         return output
 
@@ -178,22 +169,6 @@ class Discriminator(nn.Module):
         self.last_layer = conv_layer(3, current_size, args.feature_dim)
 
         input_size = dim_dict["style"] + dim_dict["content"]
-
-        # self.temporal_attention = nn.Sequential(
-        #     nn.Linear(input_size, 64),
-        #     nn.ReLU(),
-        #     nn.Linear(64,64),
-        #     nn.ReLU(),
-        #     nn.Linear(64, self.last_layer(self.features(dummy_data)).shape[-1])
-        # )
-
-        # self.feature_attention  = nn.Sequential(
-        #     nn.Linear(input_size, 64),
-        #     nn.ReLU(),
-        #     nn.Linear(64, 64),
-        #     nn.ReLU(),
-        #     nn.Linear(64, args.feature_dim)
-        # )
 
         self.attention_features = nn.Sequential(
             nn.Linear(input_size, 64),
