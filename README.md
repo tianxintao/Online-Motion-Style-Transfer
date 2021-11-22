@@ -19,7 +19,7 @@ pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-This setup is tested on *Ubuntu 18.04* with *Python 3.6.9*
+This setup is tested on *Ubuntu 18.04* with *Python 3.6.9* + *cuda 10.1*, you may need to replace the cuda version.
 
 ---
 ### Data preprocessing
