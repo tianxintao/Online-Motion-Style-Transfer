@@ -6,5 +6,5 @@ Motion style transfer is a common method for enriching character animation. Moti
 
 ## Supplementary Video
 
-<iframe width="480" height="360" src="figs/Online_Motion_Style_Transfer_Supplementary_Video 720p.mp4" frameborder="0"> </iframe>
+<iframe width="960" height="640" src="figs/Online_Motion_Style_Transfer_Supplementary_Video 720p.mp4" frameborder="0" title="Supplementary Video"> </iframe>
 
