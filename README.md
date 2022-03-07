@@ -1,4 +1,4 @@
-# Online Motion Style Transfer
+# Style-ERD: Responsive and Coherent Online Motion Style Transfer.
 
 This repository contains code for the CVPR 2022 paper ***Style-ERD: Responsive and Coherent Online Motion Style Transfer***. <br /> 
 ![image](./online_transfer.png)
