@@ -27,8 +27,6 @@ Currently, a few motion capture clips are stored in `data/xia_test` for basic te
 you can download it from [Google Drive](https://drive.google.com/file/d/1t5kGoCSjT_kaMBrtcggxVXFmH0bxAMuY/view?usp=sharing).
 Then unzip the downloaded `.zip` to `data`
 
-We will release the complete data preprocessing script later.
-
 
 ---
 ### Test
@@ -55,3 +53,28 @@ To train the content-classification network used by the content supervision modu
 python3 train.py --train_classifier --n_epoch 1000
 ```
 Then you need to move the best model to `data` and name the saved model as `classifier.pt`
+
+---
+### Acknowlegements
+
+The code builds upon from the following publications:
+1. [A Deep Learning Framework For Character Motion Synthesis and Editing](https://theorangeduck.com/page/deep-learning-framework-character-motion-synthesis-and-editing)
+2. [Unpaired Motion Style Transfer from Video to Animation](https://deepmotionediting.github.io/style_transfer)
+
+The dataset is provided by:
+1. [Realtime style transfer for unlabeled heterogeneous human motion](http://graphics.cs.cmu.edu/?p=1462)
+2. [Mixamo](https://www.mixamo.com/#/)
+   
+---
+### Citation
+
+Please consider citing our paper in your publications if the project helps your research.
+
+```bibitex
+@article{tao2022style,
+  title={Style-ERD: Responsive and Coherent Online Motion Style Transfer},
+  author={Tao, Tianxin and Zhan, Xiaohang and Chen, Zhongquan and van de Panne, Michiel},
+  journal={arXiv preprint arXiv:2203.02574},
+  year={2022}
+}
+```
