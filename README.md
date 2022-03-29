@@ -70,7 +70,7 @@ The dataset is provided by:
 
 Please consider citing our paper in your publications if the project helps your research.
 
-```bibitex
+```python
 @article{tao2022style,
   title={Style-ERD: Responsive and Coherent Online Motion Style Transfer},
   author={Tao, Tianxin and Zhan, Xiaohang and Chen, Zhongquan and van de Panne, Michiel},
