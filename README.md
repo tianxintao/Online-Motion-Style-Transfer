@@ -27,7 +27,6 @@ Currently, a few motion capture clips are stored in `data/xia_test` for basic te
 you can download it from [Google Drive](https://drive.google.com/file/d/1t5kGoCSjT_kaMBrtcggxVXFmH0bxAMuY/view?usp=sharing).
 Then unzip the downloaded `.zip` to `data`
 
-
 ---
 ### Test
 
@@ -35,7 +34,7 @@ There is a pretrained model saved under `experiments/pretrained_model`
 
 To reproduce the results shown in the paper, you can run the following command:
 ```python
-python3 test.py --load_dir experiments/pretrained_model --target_style proud --input_motion data/xia_test/neutral_01_000.bvh --input_content walk --input_style neutral --no_pos
+python3 test.py --load_dir experiments/pretrained_model --target_style proud --input_motion data/xia_test/neutral_01_000_walk.bvh --input_content walk --input_style neutral --no_pos
 ```
 
 ---

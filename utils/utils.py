@@ -11,7 +11,6 @@ def make_dir(dir_path):
         pass
     return dir_path
 
-
 def create_logger(output_path):
     logger = logging.getLogger()
     logger.handlers.clear()
@@ -23,10 +22,9 @@ def create_logger(output_path):
     logger.setLevel(os.environ.get("LOGLEVEL", "INFO"))
     return logger
 
-
 def get_style_name(style_vector):
     if style_vector.sum() == 0.0:
         style = "neutral"
     else:
-        style = style_labels[(style_vector == 1).nonzero(as_tuple=True)[0]]
+        style = style_labels[(style_vector==1).nonzero(as_tuple=True)[0]]
     return style

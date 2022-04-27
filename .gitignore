@@ -1,9 +1,7 @@
 *.pyc
-*.bvh
 utils/__pycache__/*
 *.drawio
 .vscode/*
-data/*
 __pycache__/*
 .idea/*
 python_env/*

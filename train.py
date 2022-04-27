@@ -12,6 +12,7 @@ from model import RecurrentStylization, ContentClassification
 from utils.utils import make_dir, get_style_name, create_logger
 from dataloader import MotionDataset
 from postprocess import save_bvh_from_network_output, remove_fs
+from utils.utils import *
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 content_labels = ["walk", "run", "jump", "punch", "kick"]
@@ -66,7 +67,6 @@ def main():
     else:
         trainer.train()
 
-
 class Trainer():
     def __init__(self, args):
         torch.manual_seed(args.seed)
@@ -88,9 +88,7 @@ class Trainer():
 
         with open(os.path.join(experiment_dir, 'args.json'), 'w') as f:
             json.dump(vars(args), f, sort_keys=True, indent=4)
-
-        self.tb = SummaryWriter(log_dir=os.path.join(experiment_dir, 'tb_logger'))
-
+        
         self.dataset = MotionDataset(args)
         self.test_dataset = MotionDataset(args, subset_name="test")
         self.dataloader = torch.utils.data.DataLoader(dataset=self.dataset, batch_size=args.batch_size, shuffle=True)
@@ -148,7 +146,6 @@ class Trainer():
     def compute_generator_loss(self, reconstruction, fake_motion, ground_truth, fake_score):
 
         rotation_loss = self.quaternion_difference(reconstruction["rotation"], ground_truth["rotation"]) * 0.05
-        # rotation_loss = self.criterion(reconstruction["rotation"], ground_truth["rotation"]) * 64.0
         position_loss = self.criterion(reconstruction["position"], ground_truth["position"])
         velocity_loss = self.criterion(reconstruction["velocity"], ground_truth["velocity"])
 
@@ -180,8 +177,8 @@ class Trainer():
         batch_size, duration, _ = rot1.shape
         rot1 = rot1.reshape(batch_size, duration, -1, 4)
         rot2 = rot2.reshape(batch_size, duration, -1, 4)
-        angle = torch.acos(torch.clamp(torch.abs((rot1 * rot2).sum(dim=-1)), -1 + epsilon, 1 - epsilon))
-        return (angle ** 2).sum(dim=-1).sum(dim=-1).mean()
+        angle = torch.acos(torch.clamp(torch.abs((rot1 * rot2).sum(dim=-1)), -1+epsilon, 1-epsilon))
+        return (angle**2).sum(dim=-1).sum(dim=-1).mean()
 
     def reset_loss_dict(self):
         self.loss_dict = {
@@ -314,8 +311,8 @@ class Trainer():
                                  .format(epoch + 1, self.args.n_epoch, correct / total))
                 self.model.train()
 
-            if (epoch + 1) % self.args.save_freq == 0:
-                torch.save(self.model.state_dict(), os.path.join(self.model_dir, "model_{}.pt".format(epoch + 1)))
+            if (epoch+1) % self.args.save_freq == 0:
+                torch.save(self.model.state_dict(), os.path.join(self.model_dir, "model_{}.pt".format(epoch+1)))
 
 
 if __name__ == "__main__":
