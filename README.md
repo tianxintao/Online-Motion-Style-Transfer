@@ -70,10 +70,11 @@ The dataset is provided by:
 Please consider citing our paper in your publications if the project helps your research.
 
 ```bibtex
-@article{tao2022style,
+@inproceedings{tao2022style,
   title={Style-ERD: Responsive and Coherent Online Motion Style Transfer},
   author={Tao, Tianxin and Zhan, Xiaohang and Chen, Zhongquan and van de Panne, Michiel},
-  journal={arXiv preprint arXiv:2203.02574},
+  booktitle={Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition},
+  pages={6593--6603},
   year={2022}
 }
 ```
